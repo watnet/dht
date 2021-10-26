@@ -2,6 +2,7 @@ package dht
 
 import (
 	"encoding/base32"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strconv"
@@ -22,6 +23,12 @@ var zEncoding = base32.NewEncoding("ybndrfg8ejkmcpqxot1uwisza345h769").WithPaddi
 type Address struct {
 	version int
 	bytes   []byte
+}
+
+// NewAddress creates a new address.
+func NewAddress(version int, bytes []byte) Address {
+	// TODO: Is bytes going to be randomely generated?
+	return Address{version: version, bytes: bytes}
 }
 
 func ParseAddress(s string) (a Address, err error) {
@@ -54,13 +61,53 @@ func (a Address) Version() int {
 	return a.version
 }
 
+// String returns the string representation of the address.
 func (a Address) String() string {
 	enc := zEncoding.EncodeToString(a.bytes)
 	return fmt.Sprintf("wn%v%c%v", a.version, VersionSeparator, enc)
 }
 
+// MarshalText implements encoding.TextMarshaler.
 func (a Address) MarshalText() (data []byte, err error) {
 	return []byte(a.String()), nil
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (a *Address) UnmarshalText(data []byte) error {
+	addr, err := ParseAddress(string(data))
+	if err != nil {
+		return err
+	}
+	*a = addr
+	return nil
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (a Address) MarshalBinary() (data []byte, err error) {
+	data = make([]byte, 8+len(a.bytes))
+	vlen := binary.PutUvarint(data, uint64(a.version))
+	copy(data[vlen:], a.bytes)
+	return data[:vlen+len(a.bytes)], nil
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (a *Address) UnmarshalBinary(data []byte) error {
+	if len(data) < 8 {
+		return fmt.Errorf("length %v less than 8", len(data))
+	}
+	v, n := binary.Uvarint(data)
+	if n <= 0 {
+		return fmt.Errorf("parse version: %w", ErrNoSeparator)
+	}
+	a.version = int(v)
+	a.bytes = data[n:]
+	return nil
+}
+
+// Less returns true if the Address is less than the other address.
+func (a Address) Less(b Address) bool {
+	// TODO: Review this method and see if it really does what it should.
+	return a.String() < b.String()
 }
 
 // Distance calculates the distance between two Addresses.
