@@ -8,6 +8,11 @@ import (
 )
 
 func TestAddress(t *testing.T) {
+	randAddr, err := dht.NewAddress(1)
+	require.NoError(t, err)
+	require.Equal(t, 1, randAddr.Version())
+	require.Equal(t, 56, len(randAddr.String()))
+
 	const addr1 = "wn1.ktwg1h3ypf31yamqrbose3d1ci3zgedf"
 	a1, err := dht.ParseAddress(addr1)
 	require.NoError(t, err, "It should return no error.")

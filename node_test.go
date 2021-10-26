@@ -13,7 +13,7 @@ func TestNode(t *testing.T) {
 	const addr2 = "wn1.ktwg1h3ypf31yajyctwsc3ufqj1sh7df"
 	a2, _ := dht.ParseAddress(addr2)
 
-	var a3 = dht.NewAddress(1, dht.Distance(a1, a2))
+	var a3 = dht.NewV1Address(dht.Distance(a1, a2))
 	// a3.String() -> wn1.yyyyyyyyyyyyyynqeoryryoznhmb4iyyyyyyyyyyyyyyyyyyyyyy
 	// []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 78, 68, 8, 2, 2, 23, 23, 22, 29, 84, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	// zeroes: 73

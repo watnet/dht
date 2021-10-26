@@ -1,6 +1,7 @@
 package dht
 
 import (
+	"crypto/rand"
 	"encoding/base32"
 	"encoding/binary"
 	"errors"
@@ -25,13 +26,30 @@ type Address struct {
 	bytes   []byte
 }
 
-// NewAddress creates a new address.
-func NewAddress(version int, bytes []byte) Address {
-	// TODO: Is bytes going to be randomely generated?
-	return Address{version: version, bytes: bytes}
+// NewAddress creates a new address random address.
+// The bytes will be generated according to the supplied version.
+func NewAddress(version int) (Address, error) {
+	switch version {
+	case 1:
+		var result [32]byte
+		_, err := rand.Read(result[:32])
+		if err != nil {
+			panic(err)
+		}
+		return Address{version: version, bytes: result[:]}, nil
+	default:
+		return Address{}, fmt.Errorf("unknown version %v", version)
+	}
 }
 
+// NewV1Address creates a new version 1 address from the given bytes.
+func NewV1Address(bytes []byte) Address {
+	return Address{version: 1, bytes: bytes}
+}
+
+// ParseAddress parses a string representation of an address into an address.
 func ParseAddress(s string) (a Address, err error) {
+	// TODO: Should't this parse differently according to the version?
 	sep := strings.LastIndex(s, string(VersionSeparator))
 	if sep < 0 {
 		return a, ErrNoSeparator
@@ -61,7 +79,10 @@ func (a Address) Version() int {
 	return a.version
 }
 
-// String returns the string representation of the address.
+// String returns the string representation of the address in the following format:
+//    wn<version>.<encoded bytes>
+// For example:
+//    wn1.ybndrfg8ejkmcpqxot1uwisza345h769
 func (a Address) String() string {
 	enc := zEncoding.EncodeToString(a.bytes)
 	return fmt.Sprintf("wn%v%c%v", a.version, VersionSeparator, enc)
@@ -102,12 +123,6 @@ func (a *Address) UnmarshalBinary(data []byte) error {
 	a.version = int(v)
 	a.bytes = data[n:]
 	return nil
-}
-
-// Less returns true if the Address is less than the other address.
-func (a Address) Less(b Address) bool {
-	// TODO: Review this method and see if it really does what it should.
-	return a.String() < b.String()
 }
 
 // Distance calculates the distance between two Addresses.
