@@ -1,6 +1,7 @@
 package dht_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -8,21 +9,49 @@ import (
 )
 
 func TestNode(t *testing.T) {
-	const addr1 = "wn1.ktwg1h3ypf31yamqrbose3d1ci3zgedf"
-	a1, _ := dht.ParseAddress(addr1)
-	const addr2 = "wn1.ktwg1h3ypf31yajyctwsc3ufqj1sh7df"
-	a2, _ := dht.ParseAddress(addr2)
+	for i := 0; i < 10; i++ {
+		fmt.Printf("%d\n", i)
+		a1, err := dht.NewAddress(1)
+		require.NoError(t, err)
+		a2, err := dht.NewAddress(1)
+		require.NoError(t, err)
 
-	var a3 = dht.NewV1Address(dht.Distance(a1, a2))
-	// a3.String() -> wn1.yyyyyyyyyyyyyynqeoryryoznhmb4iyyyyyyyyyyyyyyyyyyyyyy
-	// []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 78, 68, 8, 2, 2, 23, 23, 22, 29, 84, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	// zeroes: 73
+		n1, err := dht.NewNode(a1, 20)
+		require.NoError(t, err)
+		n2, err := dht.NewNode(a2, 20)
+		require.NoError(t, err)
 
-	n, _ := dht.NewNode(a1)
-	require.Equal(t, 0, n.Size())
+		// FIXME: This test does not work. It seems to be breaking because the Node's bucket
+		// capacity is 0 instead of 20 (sometimes), so it instantly fails with a bucket full
+		// error. I'm assuming that the bucket is full because of how the bucket is
+		// implemented inside the Node:
+		//     buckets: [256]bucket{
+		//         {
+		// 		   addresses: make([]Address, 0, bucketCapacity),
+		// 	       },
+		//     },
 
-	err := n.AddAddress(a3)
+		err = n1.AddAddress(a2)
+		require.NoError(t, err)
+		err = n2.AddAddress(a1)
+		require.NoError(t, err)
+	}
+}
+
+func TestFullBucket(t *testing.T) {
+	a1, err := dht.NewAddress(1)
+	require.NoError(t, err)
+	a2, err := dht.NewAddress(1)
 	require.NoError(t, err)
 
-	require.Equal(t, 1, n.Size())
+	n, err := dht.NewNode(a1, 20)
+	require.NoError(t, err)
+
+	for i := 0; i < 20; i++ {
+		err := n.AddAddress(a2)
+		require.NoError(t, err)
+	}
+
+	err = n.AddAddress(a2)
+	require.Error(t, err)
 }

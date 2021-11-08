@@ -42,9 +42,22 @@ func NewAddress(version int) (Address, error) {
 	}
 }
 
-// NewV1Address creates a new version 1 address from the given bytes.
-func NewV1Address(bytes []byte) Address {
+// NewAddressV1 creates a new version 1 address from the given bytes.
+func NewAddressV1(bytes []byte) Address {
 	return Address{version: 1, bytes: bytes}
+}
+
+func (a Address) Version() int {
+	return a.version
+}
+
+// String returns the string representation of the address in the following format:
+//    wn<version>.<encoded bytes>
+// For example:
+//    wn1.ybndrfg8ejkmcpqxot1uwisza345h769
+func (a Address) String() string {
+	enc := zEncoding.EncodeToString(a.bytes)
+	return fmt.Sprintf("wn%v%c%v", a.version, VersionSeparator, enc)
 }
 
 // ParseAddress parses a string representation of an address into an address.
@@ -72,20 +85,6 @@ func ParseAddress(s string) (a Address, err error) {
 		version: int(v),
 		bytes:   dec,
 	}, nil
-}
-
-// Version returns the address's version field.
-func (a Address) Version() int {
-	return a.version
-}
-
-// String returns the string representation of the address in the following format:
-//    wn<version>.<encoded bytes>
-// For example:
-//    wn1.ybndrfg8ejkmcpqxot1uwisza345h769
-func (a Address) String() string {
-	enc := zEncoding.EncodeToString(a.bytes)
-	return fmt.Sprintf("wn%v%c%v", a.version, VersionSeparator, enc)
 }
 
 // MarshalText implements encoding.TextMarshaler.
@@ -123,18 +122,4 @@ func (a *Address) UnmarshalBinary(data []byte) error {
 	a.version = int(v)
 	a.bytes = data[n:]
 	return nil
-}
-
-// Distance calculates the distance between two Addresses.
-//
-// The order of the arguments has no effect on the output, so that:
-//    Distance(a1, a2) == Distance(a2, a1)
-func Distance(a1, a2 Address) []byte {
-	var result [32]byte
-
-	for i := range a1.bytes {
-		result[i] = a1.bytes[i] ^ a2.bytes[i]
-	}
-
-	return result[:]
 }

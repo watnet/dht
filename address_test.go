@@ -23,3 +23,35 @@ func TestAddress(t *testing.T) {
 	require.NoError(t, err, "It should return no error.")
 	require.Equal(t, addr2, a2.String())
 }
+
+// func TestExample(t *testing.T) {
+// 	tests := []struct {
+// 		name string
+// 		in   string
+// 		out  int
+// 	}{
+// 		{
+// 			name: "addr1",
+// 			in:   "wn1.ktwg1h3ypf31yamqrbose3d1ci3zgedf",
+// 			out:  1,
+// 		},
+// 		{
+// 			name: "addr2",
+// 			in:   "wn1.ktwg1h3ypf31yajyctwsc3ufqj1sh7df",
+// 			out:  1,
+// 		},
+// 	}
+
+// 	for _, test := range tests {
+// 		t.Run(test.name, func(t *testing.T) {
+// 			got, err := dht.ParseAddress(test.in)
+// 			if err != nil {
+// 				t.Errorf("ParseAddress(%q) = %v", test.in, err)
+// 			} else {
+// 				require.NoError(t, err, "It should return no error.")
+// 			}
+// 			require.Equal(t, test.out, got.String(), "The expected output should equal the actual output.")
+// 			require.Equal(t, test.out, got.Version(), "The expected output should equal the actual output.")
+// 		})
+// 	}
+// }
