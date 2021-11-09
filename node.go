@@ -1,12 +1,16 @@
 package dht
 
 import (
+	"container/heap"
 	"errors"
-	"fmt"
 )
 
 var (
 	ErrBucketFull = errors.New("bucket is full")
+)
+
+const (
+	BucketSize = 20
 )
 
 type Node struct {
@@ -15,14 +19,10 @@ type Node struct {
 }
 
 // NewNode creates a new node.
-func NewNode(address Address, bucketCapacity int) (*Node, error) {
+func NewNode(address Address) (*Node, error) {
 	return &Node{
 		address: address,
-		buckets: [256]bucket{
-			{
-				addresses: make([]Address, 0, bucketCapacity),
-			},
-		},
+		buckets: [256]bucket{},
 	}, nil
 }
 
@@ -32,44 +32,66 @@ func (n *Node) String() string {
 }
 
 // AddAddress adds the address to one of the Node's buckets.
-func (n *Node) AddAddress(address Address) error {
+func (n *Node) AddAddress(address Address) {
 	bi := newUint256(address.bytes).leadingZeros()
-	err := n.buckets[bi].add(n.address, address)
-	if err != nil {
-		return fmt.Errorf("cannot add address: %v", err)
-	}
-	return nil
+	dist := Dist(n.address, address)
+	n.buckets[bi].add(bucketEntry{
+		addr: address,
+		dist: dist,
+	})
 }
 
-// Closest returns the closest address to the target address.
-func (n *Node) Closest(address Address) Address {
+// Neighbors returns the k closest nodes to the Node.
+func (n *Node) Neighbors(address Address) []Address {
 	bi := newUint256(address.bytes).leadingZeros()
-	for _, v := range n.buckets[bi].addresses {
-		if Dist(n.address, v).Less(Dist(n.address, address)) {
-			return v
-		}
+	addresses := make([]Address, 0, len(n.buckets[bi]))
+	for _, be := range n.buckets[bi] {
+		addresses = append(addresses, be.addr)
 	}
-	return n.buckets[bi].addresses[0]
+	return addresses
+}
+
+// bucketEntry represents an entry in a bucket.
+type bucketEntry struct {
+	addr Address
+	dist Distance
 }
 
 // bucket is a struct that handles the distance-sorted storage of addresses.
-type bucket struct {
-	addresses []Address
+type bucket []bucketEntry
+
+func (b bucket) Len() int {
+	return len(b)
 }
 
-// add inserts the address into the proper index of the bucket, based on the distance to the target address.
-func (b *bucket) add(nodeaddress, address Address) error {
-	for i, v := range b.addresses {
-		if Dist(nodeaddress, v).Less(Dist(nodeaddress, address)) {
-			b.addresses[i] = address
-			return nil
-		}
+func (b bucket) Less(i, j int) bool {
+	return b[j].dist.Less(b[i].dist)
+}
+
+func (b bucket) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
+func (b *bucket) Push(x interface{}) {
+	*b = append(*b, x.(bucketEntry))
+}
+
+func (b *bucket) Pop() interface{} {
+	v := (*b)[len(*b)-1]
+	*b = (*b)[:len(*b)-1]
+	return v
+}
+
+func (b *bucket) add(be bucketEntry) {
+	if len(*b) < BucketSize {
+		heap.Push(b, be)
+		return
 	}
 
-	if len(b.addresses) < cap(b.addresses) {
-		b.addresses = append(b.addresses, address)
-		return nil
+	if (*b)[0].dist.Less(be.dist) {
+		return
 	}
 
-	return ErrBucketFull
+	(*b)[0] = be
+	heap.Fix(b, 0)
 }
