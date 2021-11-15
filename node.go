@@ -2,15 +2,13 @@ package dht
 
 import (
 	"container/heap"
-	"errors"
-)
-
-var (
-	ErrBucketFull = errors.New("bucket is full")
+	"net"
+	"time"
 )
 
 const (
-	BucketSize = 20
+	BucketSize  = 20
+	AddrTimeout = 24 * time.Hour
 )
 
 type Node struct {
@@ -22,7 +20,6 @@ type Node struct {
 func NewNode(address Address) (*Node, error) {
 	return &Node{
 		address: address,
-		buckets: [256]bucket{},
 	}, nil
 }
 
@@ -31,30 +28,21 @@ func (n *Node) String() string {
 	return n.address.String()
 }
 
-// AddAddress adds the address to one of the Node's buckets.
-func (n *Node) AddAddress(address Address) {
-	bi := newUint256(address.bytes).leadingZeros()
-	dist := Dist(n.address, address)
-	n.buckets[bi].add(bucketEntry{
-		addr: address,
-		dist: dist,
-	})
+// Add adds the address to one of the Node's buckets.
+func (n *Node) Add(addr Address, ip []net.IPAddr) {
+	bi := newUint256(addr.bytes).leadingZeros()
+	dist := Dist(n.address, addr)
+	n.buckets[bi].add(addr, dist, ip)
 }
 
 // Neighbors returns the k closest nodes to the Node.
-func (n *Node) Neighbors(address Address) []Address {
+func (n *Node) Neighbors(address Address) []PeerInfo {
 	bi := newUint256(address.bytes).leadingZeros()
-	addresses := make([]Address, 0, len(n.buckets[bi]))
+	addresses := make([]PeerInfo, 0, len(n.buckets[bi]))
 	for _, be := range n.buckets[bi] {
 		addresses = append(addresses, be.addr)
 	}
 	return addresses
-}
-
-// bucketEntry represents an entry in a bucket.
-type bucketEntry struct {
-	addr Address
-	dist Distance
 }
 
 // bucket is a struct that handles the distance-sorted storage of addresses.
@@ -82,9 +70,27 @@ func (b *bucket) Pop() interface{} {
 	return v
 }
 
-func (b *bucket) add(be bucketEntry) {
+func (b *bucket) add(address Address, dist Distance, ip []net.IPAddr) {
+	be := bucketEntry{
+		addr:  PeerInfo{address, ip},
+		dist:  dist,
+		added: time.Now(),
+	}
+
 	if len(*b) < BucketSize {
 		heap.Push(b, be)
+		return
+	}
+
+	oldest := 0
+	for i := 1; i < len(*b); i++ {
+		if (*b)[i].added.Before((*b)[oldest].added) {
+			oldest = i
+		}
+	}
+	if (*b)[oldest].age() > AddrTimeout {
+		(*b)[oldest] = be
+		heap.Fix(b, oldest)
 		return
 	}
 
@@ -94,4 +100,16 @@ func (b *bucket) add(be bucketEntry) {
 
 	(*b)[0] = be
 	heap.Fix(b, 0)
+}
+
+// bucketEntry represents an entry in a bucket.
+type bucketEntry struct {
+	addr  PeerInfo
+	dist  Distance
+	added time.Time
+}
+
+// age returns the age of the entry.
+func (be bucketEntry) age() time.Duration {
+	return time.Since(be.added)
 }

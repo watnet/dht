@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 )
@@ -24,6 +25,12 @@ var zEncoding = base32.NewEncoding("ybndrfg8ejkmcpqxot1uwisza345h769").WithPaddi
 type Address struct {
 	version int
 	bytes   []byte
+}
+
+// PeerInfo is a type that bundles together an Address and the IP addresses associated with it.
+type PeerInfo struct {
+	Addr Address
+	IP   []net.IPAddr
 }
 
 // NewAddress creates a new address random address.
