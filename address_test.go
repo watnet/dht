@@ -8,7 +8,8 @@ import (
 )
 
 func TestAddress(t *testing.T) {
-	randAddr, err := dht.NewAddress(1)
+	// FIXME: This test needs to be totally reworked in order to work with the updated ecdh package.
+	randAddr, err := dht.NewAddressV1()
 	require.NoError(t, err)
 	require.Equal(t, 1, randAddr.Version())
 	require.Equal(t, 56, len(randAddr.String()))

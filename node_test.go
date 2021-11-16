@@ -9,6 +9,7 @@ import (
 )
 
 func TestNode(t *testing.T) {
+	// FIXME: This test needs to be totally reworked in order to work with the updated ecdh package.
 	for i := 0; i < 10; i++ {
 		a1, err := dht.NewAddress(1)
 		require.NoError(t, err)
