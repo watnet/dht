@@ -6,14 +6,22 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/watnet/dht"
+	"github.com/watnet/ecdh"
 )
 
 func TestNode(t *testing.T) {
-	// FIXME: This test needs to be totally reworked in order to work with the updated ecdh package.
 	for i := 0; i < 10; i++ {
-		a1, err := dht.NewAddress(1)
+		var c ecdh.Config
+		priv1, err := c.GenerateKey()
 		require.NoError(t, err)
-		a2, err := dht.NewAddress(1)
+		pub1, err := priv1.PublicKey()
+		require.NoError(t, err)
+		a1 := dht.NewAddressV1(pub1)
+
+		priv2, err := c.GenerateKey()
+		require.NoError(t, err)
+		pub2, err := priv2.PublicKey()
+		a2 := dht.NewAddressV1(pub2)
 		require.NoError(t, err)
 
 		n1, err := dht.NewNode(a1)
